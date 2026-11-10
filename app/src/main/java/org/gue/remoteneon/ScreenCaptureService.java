@@ -61,6 +61,25 @@ public class ScreenCaptureService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // PENTING: startForeground HARUS dipanggil di baris paling pertama
+        // untuk menghindari crash "ForegroundServiceDidNotStartInTimeException"
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                        1,
+                        createNotification(),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                );
+            } else {
+                startForeground(1, createNotification());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Gagal startForeground", e);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        // Setelah foreground aktif, baru kita proses intent-nya dengan aman
         try {
             if (intent == null) {
                 Log.e(TAG, "Intent is null");
@@ -78,19 +97,9 @@ public class ScreenCaptureService extends Service {
             }
 
             if (serverIP == null || data == null || resultCode == -1) {
-                Log.e(TAG, "Missing required extras");
+                Log.e(TAG, "Kehilangan data penting. IP=" + serverIP + ", data=" + data);
                 stopSelf();
                 return START_NOT_STICKY;
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                        1,
-                        createNotification(),
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                );
-            } else {
-                startForeground(1, createNotification());
             }
 
             MediaProjectionManager mgr =
@@ -116,7 +125,7 @@ public class ScreenCaptureService extends Service {
             mediaProjection.registerCallback(new MediaProjection.Callback() {
                 @Override
                 public void onStop() {
-                    Log.w(TAG, "MediaProjection stopped");
+                    Log.w(TAG, "MediaProjection stopped by system");
                     stopSelf();
                 }
             }, handler);
@@ -127,7 +136,7 @@ public class ScreenCaptureService extends Service {
             startScreenCapture();
 
         } catch (Exception e) {
-            Log.e(TAG, "onStartCommand failed", e);
+            Log.e(TAG, "Error di onStartCommand", e);
             stopSelf();
         }
 
@@ -246,22 +255,35 @@ public class ScreenCaptureService extends Service {
     }
 
     private Notification createNotification() {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
+        try {
+            Intent notificationIntent = new Intent(this, MainActivity.class);
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                notificationIntent,
-                PendingIntent.FLAG_IMMUTABLE
-        );
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                    this,
+                    0,
+                    notificationIntent,
+                    PendingIntent.FLAG_IMMUTABLE
+            );
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Remote Neon Agent")
-                .setContentText("Streaming layar aktif")
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .build();
+            return new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Remote Neon Agent")
+                    .setContentText("Streaming layar aktif")
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentIntent(pendingIntent)
+                    .setOngoing(true)
+                    .build();
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating notification", e);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                return new Notification.Builder(this, CHANNEL_ID)
+                        .setContentTitle("Remote Neon")
+                        .build();
+            } else {
+                return new Notification.Builder(this)
+                        .setContentTitle("Remote Neon")
+                        .build();
+            }
+        }
     }
 
     @Override
