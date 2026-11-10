@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="REMOTE NEON AGENT"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#34d96b"
+        android:layout_marginBottom="32dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etServerIP"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="IP Server Termux (contoh: 192.168.1.10)"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Status: Siap"
+        android:textSize="14sp"
+        android:layout_marginBottom="24dp"
+        android:gravity="center" />
+
+    <Button
+        android:id="@+id/btnAccessibility"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Buka Pengaturan Accessibility"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnAudio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Izinkan Audio"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/btnScreen"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Izinkan Rekam Layar"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/btnStart"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="MULAI"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:backgroundTint="#34d96b"
+        android:textColor="#000" />
+
+</LinearLayout>

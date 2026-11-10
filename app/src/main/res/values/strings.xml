@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Remote Neon Agent</string>
+    <string name="accessibility_desc">Remote Neon butuh izin ini buat kontrol layar HP (tap, swipe, back, home).</string>
+</resources>
