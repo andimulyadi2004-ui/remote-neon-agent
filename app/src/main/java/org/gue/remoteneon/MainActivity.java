@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.widget.Button;
@@ -13,12 +14,10 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 public class MainActivity extends Activity {
     private static final int REQ_AUDIO = 1;
     private static final int REQ_SCREEN = 2;
+    private static final int REQ_NOTIF = 3;
 
     private EditText etServerIP;
     private TextView tvStatus;
@@ -46,32 +45,50 @@ public class MainActivity extends Activity {
         btnAccessibility.setOnClickListener(v -> {
             Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
             startActivity(intent);
-            Toast.makeText(this, "Aktifkan 'Remote Neon' di Accessibility", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Aktifkan Remote Neon di Accessibility", Toast.LENGTH_LONG).show();
         });
 
         btnAudio.setOnClickListener(v -> {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                     != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+                requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
             } else {
                 tvStatus.setText("Audio sudah diizinkan");
             }
         });
 
         btnScreen.setOnClickListener(v -> {
-            MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+            MediaProjectionManager mgr =
+                    (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
             startActivityForResult(mgr.createScreenCaptureIntent(), REQ_SCREEN);
         });
 
         btnStart.setOnClickListener(v -> {
             String ip = etServerIP.getText().toString().trim();
+
             if (ip.isEmpty()) {
-                Toast.makeText(this, "Masukkan IP server dulu", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Isi IP server Termux dulu", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!hasNotificationPermission()) {
+                requestPermissions(
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQ_NOTIF
+                );
+                Toast.makeText(this, "Izinkan notifikasi dulu", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!isAccessibilityServiceEnabled()) {
+                Toast.makeText(this, "Accessibility Remote Neon belum aktif", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                startActivity(intent);
                 return;
             }
 
             if (resultCode != Activity.RESULT_OK || data == null) {
-                Toast.makeText(this, "Izinkan rekam layar dulu", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Izinkan rekam layar dulu", Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -81,21 +98,44 @@ public class MainActivity extends Activity {
             serviceIntent.putExtra("server_ip", ip);
             serviceIntent.putExtra("result_code", resultCode);
             serviceIntent.putExtra("data", data);
-            startForegroundService(serviceIntent);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
 
             Toast.makeText(this, "Service dimulai", Toast.LENGTH_SHORT).show();
         });
     }
 
+    private boolean hasNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private boolean isAccessibilityServiceEnabled() {
+        try {
+            String enabledServices = Settings.Secure.getString(
+                    getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            );
+
+            if (enabledServices == null) return false;
+
+            String serviceName = getPackageName() + "/" + NeonAccessibilityService.class.getName();
+            return enabledServices.contains(serviceName);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == REQ_AUDIO) {
-            if (resultCode == Activity.RESULT_OK) {
-                tvStatus.setText("Audio diizinkan");
-            }
-        }
 
         if (requestCode == REQ_SCREEN) {
             if (resultCode == Activity.RESULT_OK && data != null) {
@@ -111,9 +151,20 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         if (requestCode == REQ_AUDIO) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 tvStatus.setText("Audio diizinkan");
+            } else {
+                tvStatus.setText("Audio ditolak");
+            }
+        }
+
+        if (requestCode == REQ_NOTIF) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                tvStatus.setText("Notifikasi diizinkan");
+            } else {
+                tvStatus.setText("Notifikasi ditolak");
             }
         }
     }
